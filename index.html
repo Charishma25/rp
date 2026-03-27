@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beam Damage Detection</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body {
+    font-family: Arial;
+    margin:0;
+    background: linear-gradient(135deg,#4facfe,#00f2fe);
+}
+
+header {
+    text-align:center;
+    padding:20px;
+    color:white;
+    font-size:1.5rem;
+}
+
+.container {
+    background:white;
+    margin:20px auto;
+    padding:20px;
+    border-radius:15px;
+    width:95%;
+    max-width:1100px;
+}
+
+img {
+    width:100%;
+    max-width:700px;
+    display:block;
+    margin:auto;
+    border-radius:10px;
+}
+
+.controls {
+    text-align:center;
+    margin:15px;
+}
+
+input, button {
+    padding:10px;
+    margin:5px;
+    border:none;
+    border-radius:8px;
+    background:#4facfe;
+    color:white;
+    cursor:pointer;
+}
+
+table {
+    width:100%;
+    border-collapse:collapse;
+    margin-top:20px;
+}
+
+th, td {
+    padding:8px;
+    border:1px solid #ddd;
+    text-align:center;
+}
+
+th {
+    background:#4facfe;
+    color:white;
+}
+
+.warning {
+    background:red;
+    color:white;
+    font-weight:bold;
+}
+</style>
+</head>
+
+<body>
+
+<header>🚀 Beam Damage Detection</header>
+
+<div class="container">
+
+<h2>Beam Setup</h2>
+<img src="https://upload.wikimedia.org/wikipedia/commons/6/6e/Beam_structure_example.jpg">
+
+<div class="controls">
+<input type="file" id="csvFile">
+<button onclick="generateData()">Generate 1000 Data</button>
+</div>
+
+<canvas id="chart"></canvas>
+
+<table>
+<thead>
+<tr>
+<th>Time</th>
+<th>Acceleration</th>
+<th>ΔA (%)</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody id="tableBody"></tbody>
+</table>
+
+</div>
+
+<script>
+
+document.getElementById("csvFile").addEventListener("change", function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = function(event) {
+        handleData(event.target.result);
+    };
+
+    reader.readAsText(file);
+});
+
+function handleData(text) {
+    const rows = text.trim().split("\n");
+    const tbody = document.getElementById("tableBody");
+    tbody.innerHTML = "";
+
+    let times = [];
+    let acc = [];
+    let prevA = null;
+
+    // skip header automatically
+    for (let i = 1; i < rows.length; i++) {
+
+        let cols = rows[i].split(",");
+
+        if (cols.length < 2) continue;
+
+        let T = parseFloat(cols[0]);
+        let A = parseFloat(cols[1]);
+
+        if (isNaN(T) || isNaN(A)) continue;
+
+        let deltaA = prevA !== null ? Math.abs(((A - prevA)/prevA)*100) : 0;
+
+        let tr = document.createElement("tr");
+
+        if (deltaA >= 20) tr.classList.add("warning");
+
+        tr.innerHTML = `
+            <td>${T}</td>
+            <td>${A.toFixed(2)}</td>
+            <td>${deltaA.toFixed(2)}</td>
+            <td>${deltaA >= 20 ? "⚠️ DAMAGE" : "Normal"}</td>
+        `;
+
+        tbody.appendChild(tr);
+
+        times.push(T);
+        acc.push(A);
+        prevA = A;
+    }
+
+    drawChart(times, acc);
+}
+
+function generateData() {
+    let data = "Time,Acceleration\n";
+    let acc = 1;
+
+    for (let i = 0; i < 1000; i++) {
+        acc += (Math.random() - 0.5);
+        data += `${i},${acc.toFixed(2)}\n`;
+    }
+
+    handleData(data);
+}
+
+let chart;
+
+function drawChart(times, acc) {
+    if (chart) chart.destroy();
+
+    chart = new Chart(document.getElementById("chart"), {
+        type: "line",
+        data: {
+            labels: times,
+            datasets: [{
+                label: "Acceleration vs Time",
+                data: acc,
+                borderWidth: 2
+            }]
+        }
+    });
+}
+
+</script>
+
+</body>
+</html>
