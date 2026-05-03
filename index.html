@@ -169,7 +169,55 @@ function handleData(text) {
         acc.push(A);
         prevA = A;
     }
+function handleData(text) {
+    const rows = text.trim().split("\n");
+    const tbody = document.getElementById("tableBody");
+    tbody.innerHTML = "";
 
+    let times = [];
+    let acc = [];
+    let prevA = null;
+
+    for (let i = 1; i < rows.length; i++) {
+
+        let row = rows[i].trim();
+        if (!row) continue;
+
+        let cols = row.split(",");
+
+        let T = parseFloat(cols[0].trim());
+        let A = parseFloat(cols[1].trim());
+
+        if (isNaN(T) || isNaN(A)) continue;
+
+        let deltaA = prevA !== null 
+            ? Math.abs(((A - prevA) / prevA) * 100) 
+            : 0;
+
+        let tr = document.createElement("tr");
+
+        if (deltaA >= 20) tr.classList.add("warning");
+
+        tr.innerHTML = `
+            <td>${T}</td>
+            <td>${A.toFixed(4)}</td>
+            <td>${deltaA.toFixed(2)}</td>
+            <td>${deltaA >= 20 ? "⚠️ DAMAGE" : "Normal"}</td>
+        `;
+
+        tbody.appendChild(tr);
+
+        times.push(T);
+        acc.push(A);
+        prevA = A;
+    }
+
+    if (times.length > 0) {
+        drawChart(times, acc);
+    } else {
+        alert("Data not read properly. Check CSV format.");
+    }
+}
     drawChart(times, acc);
 }
 
