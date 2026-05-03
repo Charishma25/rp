@@ -8,6 +8,10 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
+* {
+    box-sizing: border-box;
+}
+
 body {
     font-family: Arial;
     margin:0;
@@ -32,7 +36,7 @@ header {
 
 img {
     width:100%;
-    max-width:700px;
+    max-width:800px;
     display:block;
     margin:auto;
     border-radius:10px;
@@ -53,10 +57,15 @@ input, button {
     cursor:pointer;
 }
 
+button:hover {
+    background:#007bff;
+}
+
 table {
     width:100%;
     border-collapse:collapse;
     margin-top:20px;
+    overflow-x:auto;
 }
 
 th, td {
@@ -75,6 +84,12 @@ th {
     color:white;
     font-weight:bold;
 }
+
+@media (max-width:768px) {
+    th, td {
+        font-size:12px;
+    }
+}
 </style>
 </head>
 
@@ -84,20 +99,16 @@ th {
 
 <div class="container">
 
-
 <h2>Experimental Setup (Beam with Accelerometer)</h2>
 
-<div style="text-align:center; position:relative;">
-    <img src="beam.jpg" 
-         alt="Beam Experiment"
-         style="width:100%; max-width:900px; border-radius:15px; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
-</div>
+<img src="beam.jpg">
 
 <div class="controls">
 <input type="file" id="csvFile">
-<button onclick="generateData()">Generate 1000 Data</button>
+<button onclick="generateData()">Generate Demo Data</button>
 <button onclick="predictFuture()">Predict Next Value</button>
 </div>
+
 <canvas id="chart"></canvas>
 
 <table>
@@ -118,8 +129,6 @@ th {
 
 document.getElementById("csvFile").addEventListener("change", function(e) {
     const file = e.target.files[0];
-    if (!file) return;
-
     const reader = new FileReader();
 
     reader.onload = function(event) {
@@ -129,46 +138,7 @@ document.getElementById("csvFile").addEventListener("change", function(e) {
     reader.readAsText(file);
 });
 
-function handleData(text) {
-    const rows = text.trim().split("\n");
-    const tbody = document.getElementById("tableBody");
-    tbody.innerHTML = "";
-
-    let times = [];
-    let acc = [];
-    let prevA = null;
-
-    // skip header automatically
-    for (let i = 1; i < rows.length; i++) {
-
-        let cols = rows[i].split(",");
-
-        if (cols.length < 2) continue;
-
-        let T = parseFloat(cols[0]);
-        let A = parseFloat(cols[1]);
-
-        if (isNaN(T) || isNaN(A)) continue;
-
-        let deltaA = prevA !== null ? Math.abs(((A - prevA)/prevA)*100) : 0;
-
-        let tr = document.createElement("tr");
-
-        if (deltaA >= 20) tr.classList.add("warning");
-
-        tr.innerHTML = `
-            <td>${T}</td>
-            <td>${A.toFixed(2)}</td>
-            <td>${deltaA.toFixed(2)}</td>
-            <td>${deltaA >= 20 ? "⚠️ DAMAGE" : "Normal"}</td>
-        `;
-
-        tbody.appendChild(tr);
-
-        times.push(T);
-        acc.push(A);
-        prevA = A;
-    }
+// ✅ FIXED FUNCTION (ONLY ONE)
 function handleData(text) {
     const rows = text.trim().split("\n");
     const tbody = document.getElementById("tableBody");
@@ -185,13 +155,13 @@ function handleData(text) {
 
         let cols = row.split(",");
 
-        let T = parseFloat(cols[0].trim());
-        let A = parseFloat(cols[1].trim());
+        let T = parseFloat(cols[0]);
+        let A = parseFloat(cols[1]);
 
         if (isNaN(T) || isNaN(A)) continue;
 
-        let deltaA = prevA !== null 
-            ? Math.abs(((A - prevA) / prevA) * 100) 
+        let deltaA = prevA !== null && prevA !== 0
+            ? Math.abs((A - prevA) / prevA) * 100
             : 0;
 
         let tr = document.createElement("tr");
@@ -215,13 +185,21 @@ function handleData(text) {
     if (times.length > 0) {
         drawChart(times, acc);
     } else {
-        alert("Data not read properly. Check CSV format.");
+        alert("CSV not read properly");
     }
 }
-    drawChart(times, acc);
-}
 
+// Demo data
+function generateData() {
+    let data = "Time,Acceleration\n";
+    let acc = 1;
 
+    for (let i = 0; i < 100; i++) {
+        acc += (Math.random() - 0.5);
+        data += `${i},${acc.toFixed(2)}\n`;
+    }
+
+    handleData(data);
 }
 
 let chart;
@@ -236,13 +214,15 @@ function drawChart(times, acc) {
             datasets: [{
                 label: "Acceleration vs Time",
                 data: acc,
-                borderWidth: 2
+                borderWidth: 2,
+                tension: 0.3
             }]
         }
     });
 }
-    async function predictFuture() {
 
+// ML prediction
+async function predictFuture() {
     let rows = document.querySelectorAll("#tableBody tr");
 
     if (rows.length < 10) {
@@ -253,8 +233,7 @@ function drawChart(times, acc) {
     let values = [];
 
     for (let i = rows.length - 10; i < rows.length; i++) {
-        let val = parseFloat(rows[i].children[1].innerText);
-        values.push(val);
+        values.push(parseFloat(rows[i].children[1].innerText));
     }
 
     let response = await fetch("http://127.0.0.1:5000/predict", {
@@ -267,7 +246,7 @@ function drawChart(times, acc) {
 
     let result = await response.json();
 
-    alert("Predicted Next Acceleration: " + result.prediction.toFixed(3));
+    alert("Predicted: " + result.prediction.toFixed(3));
 }
 
 </script>
