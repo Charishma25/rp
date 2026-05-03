@@ -96,8 +96,8 @@ th {
 <div class="controls">
 <input type="file" id="csvFile">
 <button onclick="generateData()">Generate 1000 Data</button>
+<button onclick="predictFuture()">Predict Next Value</button>
 </div>
-
 <canvas id="chart"></canvas>
 
 <table>
@@ -173,16 +173,7 @@ function handleData(text) {
     drawChart(times, acc);
 }
 
-function generateData() {
-    let data = "Time,Acceleration\n";
-    let acc = 1;
 
-    for (let i = 0; i < 1000; i++) {
-        acc += (Math.random() - 0.5);
-        data += `${i},${acc.toFixed(2)}\n`;
-    }
-
-    handleData(data);
 }
 
 let chart;
@@ -201,6 +192,34 @@ function drawChart(times, acc) {
             }]
         }
     });
+}
+    async function predictFuture() {
+
+    let rows = document.querySelectorAll("#tableBody tr");
+
+    if (rows.length < 10) {
+        alert("Need at least 10 data points");
+        return;
+    }
+
+    let values = [];
+
+    for (let i = rows.length - 10; i < rows.length; i++) {
+        let val = parseFloat(rows[i].children[1].innerText);
+        values.push(val);
+    }
+
+    let response = await fetch("http://127.0.0.1:5000/predict", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ values: values })
+    });
+
+    let result = await response.json();
+
+    alert("Predicted Next Acceleration: " + result.prediction.toFixed(3));
 }
 
 </script>
